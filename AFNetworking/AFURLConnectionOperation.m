@@ -1,4 +1,4 @@
-// AFURLConnectionOperation.m
+// ADL_AFURLConnectionOperation.m
 // Copyright (c) 2011–2015 Alamofire Software Foundation (http://alamofire.org/)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,16 +26,22 @@
 #endif
 
 #if !__has_feature(objc_arc)
-#error AFNetworking must be built with ARC.
-// You can turn on ARC for only AFNetworking files by adding -fobjc-arc to the build phase for each of its files.
+#error ADL_AFNetworking must be built with ARC.
+// You can turn on ARC for only ADL_AFNetworking files by adding -fobjc-arc to the build phase for each of its files.
 #endif
 
-typedef NS_ENUM(NSInteger, AFOperationState) {
-    AFOperationPausedState      = -1,
-    AFOperationReadyState       = 1,
-    AFOperationExecutingState   = 2,
-    AFOperationFinishedState    = 3,
+typedef NS_ENUM(NSInteger, ADL_AFOperationState) {
+    ADL_AFOperationPausedState      = -1,
+    ADL_AFOperationReadyState       = 1,
+    ADL_AFOperationExecutingState   = 2,
+    ADL_AFOperationFinishedState    = 3,
 };
+
+#if defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && !defined(ADL_AF_APP_EXTENSIONS)
+typedef UIBackgroundTaskIdentifier ADL_AFBackgroundTaskIdentifier;
+#else
+typedef id ADL_AFBackgroundTaskIdentifier;
+#endif
 
 static dispatch_group_t url_request_operation_completion_group() {
     static dispatch_group_t af_url_request_operation_completion_group;
@@ -57,26 +63,25 @@ static dispatch_queue_t url_request_operation_completion_queue() {
     return af_url_request_operation_completion_queue;
 }
 
-static NSString * const kAFNetworkingLockName = @"com.alamofire.networking.operation.lock";
+static NSString * const kADL_AFNetworkingLockName = @"com.alamofire.networking.operation.lock";
 
-NSString * const AFNetworkingOperationDidStartNotification = @"com.alamofire.networking.operation.start";
-NSString * const AFNetworkingOperationDidFinishNotification = @"com.alamofire.networking.operation.finish";
+NSString * const ADL_AFNetworkingOperationDidStartNotification = @"com.alamofire.networking.operation.start";
+NSString * const ADL_AFNetworkingOperationDidFinishNotification = @"com.alamofire.networking.operation.finish";
 
-typedef void (^AFURLConnectionOperationProgressBlock)(NSUInteger bytes, long long totalBytes, long long totalBytesExpected);
-typedef void (^AFURLConnectionOperationAuthenticationChallengeBlock)(NSURLConnection *connection, NSURLAuthenticationChallenge *challenge);
-typedef NSCachedURLResponse * (^AFURLConnectionOperationCacheResponseBlock)(NSURLConnection *connection, NSCachedURLResponse *cachedResponse);
-typedef NSURLRequest * (^AFURLConnectionOperationRedirectResponseBlock)(NSURLConnection *connection, NSURLRequest *request, NSURLResponse *redirectResponse);
-typedef void (^AFURLConnectionOperationBackgroundTaskCleanupBlock)();
+typedef void (^ADL_AFURLConnectionOperationProgressBlock)(NSUInteger bytes, long long totalBytes, long long totalBytesExpected);
+typedef void (^ADL_AFURLConnectionOperationAuthenticationChallengeBlock)(NSURLConnection *connection, NSURLAuthenticationChallenge *challenge);
+typedef NSCachedURLResponse * (^ADL_AFURLConnectionOperationCacheResponseBlock)(NSURLConnection *connection, NSCachedURLResponse *cachedResponse);
+typedef NSURLRequest * (^ADL_AFURLConnectionOperationRedirectResponseBlock)(NSURLConnection *connection, NSURLRequest *request, NSURLResponse *redirectResponse);
 
-static inline NSString * AFKeyPathFromOperationState(AFOperationState state) {
+static inline NSString * ADL_AFKeyPathFromOperationState(ADL_AFOperationState state) {
     switch (state) {
-        case AFOperationReadyState:
+        case ADL_AFOperationReadyState:
             return @"isReady";
-        case AFOperationExecutingState:
+        case ADL_AFOperationExecutingState:
             return @"isExecuting";
-        case AFOperationFinishedState:
+        case ADL_AFOperationFinishedState:
             return @"isFinished";
-        case AFOperationPausedState:
+        case ADL_AFOperationPausedState:
             return @"isPaused";
         default: {
 #pragma clang diagnostic push
@@ -87,38 +92,38 @@ static inline NSString * AFKeyPathFromOperationState(AFOperationState state) {
     }
 }
 
-static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperationState toState, BOOL isCancelled) {
+static inline BOOL ADL_AFStateTransitionIsValid(ADL_AFOperationState fromState, ADL_AFOperationState toState, BOOL isCancelled) {
     switch (fromState) {
-        case AFOperationReadyState:
+        case ADL_AFOperationReadyState:
             switch (toState) {
-                case AFOperationPausedState:
-                case AFOperationExecutingState:
+                case ADL_AFOperationPausedState:
+                case ADL_AFOperationExecutingState:
                     return YES;
-                case AFOperationFinishedState:
+                case ADL_AFOperationFinishedState:
                     return isCancelled;
                 default:
                     return NO;
             }
-        case AFOperationExecutingState:
+        case ADL_AFOperationExecutingState:
             switch (toState) {
-                case AFOperationPausedState:
-                case AFOperationFinishedState:
+                case ADL_AFOperationPausedState:
+                case ADL_AFOperationFinishedState:
                     return YES;
                 default:
                     return NO;
             }
-        case AFOperationFinishedState:
+        case ADL_AFOperationFinishedState:
             return NO;
-        case AFOperationPausedState:
-            return toState == AFOperationReadyState;
+        case ADL_AFOperationPausedState:
+            return toState == ADL_AFOperationReadyState;
         default: {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunreachable-code"
             switch (toState) {
-                case AFOperationPausedState:
-                case AFOperationReadyState:
-                case AFOperationExecutingState:
-                case AFOperationFinishedState:
+                case ADL_AFOperationPausedState:
+                case ADL_AFOperationReadyState:
+                case ADL_AFOperationExecutingState:
+                case ADL_AFOperationFinishedState:
                     return YES;
                 default:
                     return NO;
@@ -128,8 +133,8 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
     }
 }
 
-@interface AFURLConnectionOperation ()
-@property (readwrite, nonatomic, assign) AFOperationState state;
+@interface ADL_AFURLConnectionOperation ()
+@property (readwrite, nonatomic, assign) ADL_AFOperationState state;
 @property (readwrite, nonatomic, strong) NSRecursiveLock *lock;
 @property (readwrite, nonatomic, strong) NSURLConnection *connection;
 @property (readwrite, nonatomic, strong) NSURLRequest *request;
@@ -139,24 +144,24 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
 @property (readwrite, nonatomic, copy) NSString *responseString;
 @property (readwrite, nonatomic, assign) NSStringEncoding responseStringEncoding;
 @property (readwrite, nonatomic, assign) long long totalBytesRead;
-@property (readwrite, nonatomic, copy) AFURLConnectionOperationBackgroundTaskCleanupBlock backgroundTaskCleanup;
-@property (readwrite, nonatomic, copy) AFURLConnectionOperationProgressBlock uploadProgress;
-@property (readwrite, nonatomic, copy) AFURLConnectionOperationProgressBlock downloadProgress;
-@property (readwrite, nonatomic, copy) AFURLConnectionOperationAuthenticationChallengeBlock authenticationChallenge;
-@property (readwrite, nonatomic, copy) AFURLConnectionOperationCacheResponseBlock cacheResponse;
-@property (readwrite, nonatomic, copy) AFURLConnectionOperationRedirectResponseBlock redirectResponse;
+@property (readwrite, nonatomic, assign) ADL_AFBackgroundTaskIdentifier backgroundTaskIdentifier;
+@property (readwrite, nonatomic, copy) ADL_AFURLConnectionOperationProgressBlock uploadProgress;
+@property (readwrite, nonatomic, copy) ADL_AFURLConnectionOperationProgressBlock downloadProgress;
+@property (readwrite, nonatomic, copy) ADL_AFURLConnectionOperationAuthenticationChallengeBlock authenticationChallenge;
+@property (readwrite, nonatomic, copy) ADL_AFURLConnectionOperationCacheResponseBlock cacheResponse;
+@property (readwrite, nonatomic, copy) ADL_AFURLConnectionOperationRedirectResponseBlock redirectResponse;
 
 - (void)operationDidStart;
 - (void)finish;
 - (void)cancelConnection;
 @end
 
-@implementation AFURLConnectionOperation
+@implementation ADL_AFURLConnectionOperation
 @synthesize outputStream = _outputStream;
 
 + (void)networkRequestThreadEntryPoint:(id)__unused object {
     @autoreleasepool {
-        [[NSThread currentThread] setName:@"AFNetworking"];
+        [[NSThread currentThread] setName:@"ADL_AFNetworking"];
 
         NSRunLoop *runLoop = [NSRunLoop currentRunLoop];
         [runLoop addPort:[NSMachPort port] forMode:NSDefaultRunLoopMode];
@@ -183,10 +188,10 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
 		return nil;
     }
 
-    _state = AFOperationReadyState;
+    _state = ADL_AFOperationReadyState;
 
     self.lock = [[NSRecursiveLock alloc] init];
-    self.lock.name = kAFNetworkingLockName;
+    self.lock.name = kADL_AFNetworkingLockName;
 
     self.runLoopModes = [NSSet setWithObject:NSRunLoopCommonModes];
 
@@ -194,14 +199,9 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
 
     self.shouldUseCredentialStorage = YES;
 
-    self.securityPolicy = [AFSecurityPolicy defaultPolicy];
+    self.securityPolicy = [ADL_AFSecurityPolicy defaultPolicy];
 
     return self;
-}
-
-- (instancetype)init NS_UNAVAILABLE
-{
-    return nil;
 }
 
 - (void)dealloc {
@@ -209,10 +209,13 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
         [_outputStream close];
         _outputStream = nil;
     }
-    
-    if (_backgroundTaskCleanup) {
-        _backgroundTaskCleanup();
+
+#if defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && !defined(ADL_AF_APP_EXTENSIONS)
+    if (_backgroundTaskIdentifier) {
+        [[UIApplication sharedApplication] endBackgroundTask:_backgroundTaskIdentifier];
+        _backgroundTaskIdentifier = UIBackgroundTaskInvalid;
     }
+#endif
 }
 
 #pragma mark -
@@ -285,22 +288,13 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
     [self.lock unlock];
 }
 
-#if defined(__IPHONE_OS_VERSION_MIN_REQUIRED)
+#if defined(__IPHONE_OS_VERSION_MIN_REQUIRED) && !defined(ADL_AF_APP_EXTENSIONS)
 - (void)setShouldExecuteAsBackgroundTaskWithExpirationHandler:(void (^)(void))handler {
     [self.lock lock];
-    if (!self.backgroundTaskCleanup) {
+    if (!self.backgroundTaskIdentifier) {
         UIApplication *application = [UIApplication sharedApplication];
-        UIBackgroundTaskIdentifier __block backgroundTaskIdentifier = UIBackgroundTaskInvalid;
         __weak __typeof(self)weakSelf = self;
-        
-        self.backgroundTaskCleanup = ^(){
-            if (backgroundTaskIdentifier != UIBackgroundTaskInvalid) {
-                [[UIApplication sharedApplication] endBackgroundTask:backgroundTaskIdentifier];
-                backgroundTaskIdentifier = UIBackgroundTaskInvalid;
-            }
-        };
-        
-        backgroundTaskIdentifier = [application beginBackgroundTaskWithExpirationHandler:^{
+        self.backgroundTaskIdentifier = [application beginBackgroundTaskWithExpirationHandler:^{
             __strong __typeof(weakSelf)strongSelf = weakSelf;
 
             if (handler) {
@@ -309,7 +303,9 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
 
             if (strongSelf) {
                 [strongSelf cancel];
-                strongSelf.backgroundTaskCleanup();
+
+                [application endBackgroundTask:strongSelf.backgroundTaskIdentifier];
+                strongSelf.backgroundTaskIdentifier = UIBackgroundTaskInvalid;
             }
         }];
     }
@@ -319,14 +315,14 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
 
 #pragma mark -
 
-- (void)setState:(AFOperationState)state {
-    if (!AFStateTransitionIsValid(self.state, state, [self isCancelled])) {
+- (void)setState:(ADL_AFOperationState)state {
+    if (!ADL_AFStateTransitionIsValid(self.state, state, [self isCancelled])) {
         return;
     }
 
     [self.lock lock];
-    NSString *oldStateKey = AFKeyPathFromOperationState(self.state);
-    NSString *newStateKey = AFKeyPathFromOperationState(state);
+    NSString *oldStateKey = ADL_AFKeyPathFromOperationState(self.state);
+    NSString *newStateKey = ADL_AFKeyPathFromOperationState(state);
 
     [self willChangeValueForKey:newStateKey];
     [self willChangeValueForKey:oldStateKey];
@@ -347,11 +343,11 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
 
         dispatch_async(dispatch_get_main_queue(), ^{
             NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];
-            [notificationCenter postNotificationName:AFNetworkingOperationDidFinishNotification object:self];
+            [notificationCenter postNotificationName:ADL_AFNetworkingOperationDidFinishNotification object:self];
         });
     }
 
-    self.state = AFOperationPausedState;
+    self.state = ADL_AFOperationPausedState;
     [self.lock unlock];
 }
 
@@ -362,7 +358,7 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
 }
 
 - (BOOL)isPaused {
-    return self.state == AFOperationPausedState;
+    return self.state == ADL_AFOperationPausedState;
 }
 
 - (void)resume {
@@ -371,7 +367,7 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
     }
 
     [self.lock lock];
-    self.state = AFOperationReadyState;
+    self.state = ADL_AFOperationReadyState;
 
     [self start];
     [self.lock unlock];
@@ -429,15 +425,15 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
 }
 
 - (BOOL)isReady {
-    return self.state == AFOperationReadyState && [super isReady];
+    return self.state == ADL_AFOperationReadyState && [super isReady];
 }
 
 - (BOOL)isExecuting {
-    return self.state == AFOperationExecutingState;
+    return self.state == ADL_AFOperationExecutingState;
 }
 
 - (BOOL)isFinished {
-    return self.state == AFOperationFinishedState;
+    return self.state == ADL_AFOperationFinishedState;
 }
 
 - (BOOL)isConcurrent {
@@ -449,7 +445,7 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
     if ([self isCancelled]) {
         [self performSelector:@selector(cancelConnection) onThread:[[self class] networkRequestThread] withObject:nil waitUntilDone:NO modes:[self.runLoopModes allObjects]];
     } else if ([self isReady]) {
-        self.state = AFOperationExecutingState;
+        self.state = ADL_AFOperationExecutingState;
 
         [self performSelector:@selector(operationDidStart) onThread:[[self class] networkRequestThread] withObject:nil waitUntilDone:NO modes:[self.runLoopModes allObjects]];
     }
@@ -473,17 +469,17 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
     [self.lock unlock];
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        [[NSNotificationCenter defaultCenter] postNotificationName:AFNetworkingOperationDidStartNotification object:self];
+        [[NSNotificationCenter defaultCenter] postNotificationName:ADL_AFNetworkingOperationDidStartNotification object:self];
     });
 }
 
 - (void)finish {
     [self.lock lock];
-    self.state = AFOperationFinishedState;
+    self.state = ADL_AFOperationFinishedState;
     [self.lock unlock];
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        [[NSNotificationCenter defaultCenter] postNotificationName:AFNetworkingOperationDidFinishNotification object:self];
+        [[NSNotificationCenter defaultCenter] postNotificationName:ADL_AFNetworkingOperationDidFinishNotification object:self];
     });
 }
 
@@ -502,7 +498,7 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
 - (void)cancelConnection {
     NSDictionary *userInfo = nil;
     if ([self.request URL]) {
-        userInfo = @{NSURLErrorFailingURLErrorKey : [self.request URL]};
+        userInfo = [NSDictionary dictionaryWithObject:[self.request URL] forKey:NSURLErrorFailingURLErrorKey];
     }
     NSError *error = [NSError errorWithDomain:NSURLErrorDomain code:NSURLErrorCancelled userInfo:userInfo];
 
@@ -511,7 +507,7 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
             [self.connection cancel];
             [self performSelector:@selector(connection:didFailWithError:) withObject:self.connection withObject:error];
         } else {
-            // Accommodate race condition where `self.connection` has not yet been set before cancellation
+            // Accomodate race condition where `self.connection` has not yet been set before cancellation
             self.error = error;
             [self finish];
         }
@@ -543,7 +539,7 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
         });
     }];
 
-    for (AFURLConnectionOperation *operation in operations) {
+    for (ADL_AFURLConnectionOperation *operation in operations) {
         operation.completionGroup = group;
         void (^originalCompletionBlock)(void) = [operation.completionBlock copy];
         __weak __typeof(operation)weakOperation = operation;
@@ -581,7 +577,7 @@ static inline BOOL AFStateTransitionIsValid(AFOperationState fromState, AFOperat
 
 - (NSString *)description {
     [self.lock lock];
-    NSString *description = [NSString stringWithFormat:@"<%@: %p, state: %@, cancelled: %@ request: %@, response: %@>", NSStringFromClass([self class]), self, AFKeyPathFromOperationState(self.state), ([self isCancelled] ? @"YES" : @"NO"), self.request, self.response];
+    NSString *description = [NSString stringWithFormat:@"<%@: %p, state: %@, cancelled: %@ request: %@, response: %@>", NSStringFromClass([self class]), self, ADL_AFKeyPathFromOperationState(self.state), ([self isCancelled] ? @"YES" : @"NO"), self.request, self.response];
     [self.lock unlock];
     return description;
 }
@@ -758,9 +754,9 @@ didReceiveResponse:(NSURLResponse *)response
     [coder encodeObject:self.request forKey:NSStringFromSelector(@selector(request))];
 
     switch (self.state) {
-        case AFOperationExecutingState:
-        case AFOperationPausedState:
-            [coder encodeInteger:AFOperationReadyState forKey:NSStringFromSelector(@selector(state))];
+        case ADL_AFOperationExecutingState:
+        case ADL_AFOperationPausedState:
+            [coder encodeInteger:ADL_AFOperationReadyState forKey:NSStringFromSelector(@selector(state))];
             break;
         default:
             [coder encodeInteger:self.state forKey:NSStringFromSelector(@selector(state))];
@@ -776,7 +772,7 @@ didReceiveResponse:(NSURLResponse *)response
 #pragma mark - NSCopying
 
 - (id)copyWithZone:(NSZone *)zone {
-    AFURLConnectionOperation *operation = [(AFURLConnectionOperation *)[[self class] allocWithZone:zone] initWithRequest:self.request];
+    ADL_AFURLConnectionOperation *operation = [(ADL_AFURLConnectionOperation *)[[self class] allocWithZone:zone] initWithRequest:self.request];
 
     operation.uploadProgress = self.uploadProgress;
     operation.downloadProgress = self.downloadProgress;

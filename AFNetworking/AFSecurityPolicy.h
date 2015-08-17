@@ -1,4 +1,4 @@
-// AFSecurityPolicy.h
+// ADL_AFSecurityPolicy.h
 // Copyright (c) 2011–2015 Alamofire Software Foundation (http://alamofire.org/)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -22,31 +22,33 @@
 #import <Foundation/Foundation.h>
 #import <Security/Security.h>
 
-typedef NS_ENUM(NSUInteger, AFSSLPinningMode) {
-    AFSSLPinningModeNone,
-    AFSSLPinningModePublicKey,
-    AFSSLPinningModeCertificate,
+typedef NS_ENUM(NSUInteger, ADL_AFSSLPinningMode) {
+    ADL_AFSSLPinningModeNone,
+    ADL_AFSSLPinningModePublicKey,
+    ADL_AFSSLPinningModeCertificate,
 };
 
 /**
- `AFSecurityPolicy` evaluates server trust against pinned X.509 certificates and public keys over secure connections.
+ `ADL_AFSecurityPolicy` evaluates server trust against pinned X.509 certificates and public keys over secure connections.
 
  Adding pinned SSL certificates to your app helps prevent man-in-the-middle attacks and other vulnerabilities. Applications dealing with sensitive customer data or financial information are strongly encouraged to route all communication over an HTTPS connection with SSL pinning configured and enabled.
  */
-
-NS_ASSUME_NONNULL_BEGIN
-
-@interface AFSecurityPolicy : NSObject
+@interface ADL_AFSecurityPolicy : NSObject
 
 /**
- The criteria by which server trust should be evaluated against the pinned SSL certificates. Defaults to `AFSSLPinningModeNone`.
+ The criteria by which server trust should be evaluated against the pinned SSL certificates. Defaults to `ADL_AFSSLPinningModeNone`.
  */
-@property (readonly, nonatomic, assign) AFSSLPinningMode SSLPinningMode;
+@property (readonly, nonatomic, assign) ADL_AFSSLPinningMode SSLPinningMode;
 
 /**
- The certificates used to evaluate server trust according to the SSL pinning mode. By default, this property is set to any (`.cer`) certificates included in the app bundle. Note that if you create an array with duplicate certificates, the duplicate certificates will be removed. Note that if pinning is enabled, `evaluateServerTrust:forDomain:` will return true if any pinned certificate matches.
+ Whether to evaluate an entire SSL certificate chain, or just the leaf certificate. Defaults to `YES`.
  */
-@property (nonatomic, strong, nullable) NSArray *pinnedCertificates;
+@property (nonatomic, assign) BOOL validatesCertificateChain;
+
+/**
+ The certificates used to evaluate server trust according to the SSL pinning mode. By default, this property is set to any (`.cer`) certificates included in the app bundle.
+ */
+@property (nonatomic, strong) NSArray *pinnedCertificates;
 
 /**
  Whether or not to trust servers with an invalid or expired SSL certificates. Defaults to `NO`.
@@ -80,7 +82,7 @@ NS_ASSUME_NONNULL_BEGIN
 
  @return A new security policy.
  */
-+ (instancetype)policyWithPinningMode:(AFSSLPinningMode)pinningMode;
++ (instancetype)policyWithPinningMode:(ADL_AFSSLPinningMode)pinningMode;
 
 ///------------------------------
 /// @name Evaluating Server Trust
@@ -110,11 +112,9 @@ NS_ASSUME_NONNULL_BEGIN
  @return Whether or not to trust the server.
  */
 - (BOOL)evaluateServerTrust:(SecTrustRef)serverTrust
-                  forDomain:(nullable NSString *)domain;
+                  forDomain:(NSString *)domain;
 
 @end
-
-NS_ASSUME_NONNULL_END
 
 ///----------------
 /// @name Constants
@@ -123,20 +123,20 @@ NS_ASSUME_NONNULL_END
 /**
  ## SSL Pinning Modes
 
- The following constants are provided by `AFSSLPinningMode` as possible SSL pinning modes.
+ The following constants are provided by `ADL_AFSSLPinningMode` as possible SSL pinning modes.
 
  enum {
- AFSSLPinningModeNone,
- AFSSLPinningModePublicKey,
- AFSSLPinningModeCertificate,
+ ADL_AFSSLPinningModeNone,
+ ADL_AFSSLPinningModePublicKey,
+ ADL_AFSSLPinningModeCertificate,
  }
 
- `AFSSLPinningModeNone`
+ `ADL_AFSSLPinningModeNone`
  Do not used pinned certificates to validate servers.
 
- `AFSSLPinningModePublicKey`
+ `ADL_AFSSLPinningModePublicKey`
  Validate host certificates against public keys of pinned certificates.
 
- `AFSSLPinningModeCertificate`
+ `ADL_AFSSLPinningModeCertificate`
  Validate host certificates against pinned certificates.
 */
